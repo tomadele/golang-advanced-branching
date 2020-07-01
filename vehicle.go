@@ -1,28 +1,31 @@
 package main
 
 import (
-
+	"encoding/json"
+	"io/ioutil"
+	"log"
+	"os"
+	"strings"
 )
 
 type vehicle interface {
-
 }
 
 type car struct {
-	model string
-	make string
+	model       string
+	make        string
 	typeVehicle string
 }
 
 type truck struct {
-	model string
-	make string
+	model       string
+	make        string
 	typeVehicle string
 }
 
 type bike struct {
 	model string
-	make string
+	make  string
 }
 
 // Values array for the feedback.json file
@@ -32,15 +35,15 @@ type Values struct {
 
 // Model array for the feedback.json file
 type Model struct {
-	Name string `json:"model"`
+	Name     string   `json:"model"`
 	Feedback []string `json:"feedback"`
 }
 
 type feedbackResult struct {
-	feedbackTotal int
+	feedbackTotal    int
 	feedbackPositive int
 	feedbackNegative int
-	feedbackNeutral int
+	feedbackNeutral  int
 }
 
 var vehicleResult map[string]feedbackResult
@@ -57,7 +60,6 @@ const (
 )
 
 func init() {
-
 
 	inventory = []vehicle{
 		bike{"FTR 1200", "Indian"},
@@ -79,11 +81,10 @@ func init() {
 func main() {
 
 	// Generate ratings for the different vehicles
-	
+	generateRating()
 	// Print ratings for the different vehicles
 }
 
-/*
 func readJSONFile() Values {
 	jsonFile, err := os.Open("feedback.json")
 
@@ -99,4 +100,40 @@ func readJSONFile() Values {
 
 	return content
 }
-*/
+
+func generateRating() {
+	f := readJSONFile()
+
+	for _, v := range f.Models {
+		var vehResult feedbackResult
+		var vehRating rating
+
+		for _, msg := range v.Feedback {
+			if text := strings.Split(msg, " "); len(text) >= 5 {
+				vehRating = 5.0
+				vehResult.feedbackTotal++
+				for _, word := range text {
+					switch s := strings.Trim(strings.ToLower(word), " ,.,!,?,\t,\n,\r"); s {
+					case "pleasure", "impressed", "wonderful", "fantastic", "splendid":
+						vehRating += extraPositive
+					case "help", "helpful", "thanks", "thank you", "happy":
+						vehRating += positive
+					case "not helpful", "sad", "angry", "improve", "annoy":
+						vehRating += negative
+					case "pathetic", "bad", "worse", "unfortunately", "agitated", "frustrated":
+						vehRating += extraNegative
+					}
+				}
+				switch {
+				case vehRating > 8.0:
+					vehResult.feedbackPositive++
+				case vehRating >= 4.0 && vehRating <= 8.0:
+					vehResult.feedbackNeutral++
+				case vehRating < 4.0:
+					vehResult.feedbackNegative++
+				}
+			}
+		}
+		vehicleResult[v.Name] = vehResult
+	}
+}
